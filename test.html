@@ -1,0 +1,62 @@
+<!doctype html>
+<head></head>
+<body>
+  <ul data-controller="controller">
+    <li data-repeat="phone in phones">
+   		{{phone.name}}
+	    <p>{{phone.snippet}}</p>
+    </li>
+  </ul>
+<script>
+function controller($scope){
+	$scope.phones = [
+		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
+		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
+		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
+	];	
+	
+}
+
+;(function(){
+	var walkDOM	= function( func ){
+		var elems = document.getElementsByTagName("*");
+		for(var i=0,l=elems.length; i<l; i++){
+			var elem	= elems[i];
+			func(elem);	
+		}
+	}
+	
+	var warehouse	=	{};
+
+	var complie = function(){
+		walkDOM(function(elem, $scope){
+			//console.log(elem);
+			var	controllerName	= elem.getAttribute('data-controller'),
+				repeat			= elem.getAttribute('data-repeat'),
+				childNodes		= elem.childNodes,
+				controllerFunc	= window[controllerName],
+				$scope			= {};
+
+			if(controllerFunc){
+				//controllerFunc($scope);
+				warehouse[controllerName] =	{
+					dom			: elem,
+					controller	: controllerFunc,
+					children	: []
+				}
+			}
+
+			if(repeat){
+				console.log(elem);
+				
+			}	
+
+			console.log($scope,controllerName,repeat,childNodes)
+		})	
+	}
+	
+	complie();
+})();
+</script>
+</body>
+</html>
