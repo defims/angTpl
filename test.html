@@ -2,13 +2,27 @@
 <head></head>
 <body>
   <ul data-controller="controller">
-    <li data-repeat="phone in phones">
-   		{{phone.name}}
+    <li data-controller="controller2" data-repeat="phone in phones">
+   		{{phone.name}}{{phone.snippet}}
 	    <p>{{phone.snippet}}</p>
     </li>
+	<li>{{item.child}}</li>
+	<li data-repeat="phone in phones">
+   		{{phone.name}}
+	</li>
   </ul>
+	<div>2</div>
 <script>
 function controller($scope){
+	$scope.item = { child : 'david' };	
+	$scope.phones = [
+		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
+		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
+		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
+	];	
+}
+
+function controller2($scope){
 	$scope.phones = [
 		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
 		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
@@ -18,44 +32,279 @@ function controller($scope){
 }
 
 ;(function(){
-	var walkDOM	= function( func ){
-		var elems = document.getElementsByTagName("*");
-		for(var i=0,l=elems.length; i<l; i++){
-			var elem	= elems[i];
-			func(elem);	
-		}
-	}
-	
-	var warehouse	=	{};
+	var	angTpl	= {
+			maps		: {},
+			tagList		: {
+				'SCRIPT':false
+			},
+			markRegex	: /{{(.+?)}}/gim,
+			directives	: {
+				'bind'			: function(node, value, context){
+					//console.log('bind',node,value,context)
+					var textNode		= document.createTextNode('');
+					node.appendChild( textNode );
+					context.binds.push({
+						path	: value,
+						node	: textNode
+					});
+				},
+				'controller'	: function(node, value, context){
+					var map = {
+						controller	: value,
+						binds		: [],//{{}}
+						repeats		: [],
+						dom			: node
+					};
 
-	var complie = function(){
-		walkDOM(function(elem, $scope){
-			//console.log(elem);
-			var	controllerName	= elem.getAttribute('data-controller'),
-				repeat			= elem.getAttribute('data-repeat'),
-				childNodes		= elem.childNodes,
-				controllerFunc	= window[controllerName],
-				$scope			= {};
+					this.maps[value]	= map;	
+					context.binds		= map.binds;
+					context.scope		= value;
+				},
+				'repeat'		: function(node, value, context){
+					var	scope	= context.scope,
+						repeat	= {
+							dom		: node,
+							binds	: [],
+							format	: value 
+						};
+					this.maps[scope].repeats.push(repeat);
+					context.binds	= repeat.binds;
+				},
+				'src'			: function(node, value, context){
+					var scope		= context.scope,
+						attrNode	= document.createAttribute('src');
+					node.setAttributeNode(attrNode);
+						
+					context.binds.push({
+						path	: value,
+						node	: attrNode
+					});
+					
+				},
+				'model'			: function(node, value, context){
+					//console.log('bind',node,value,context)
+					//console.log(node,value);
 
-			if(controllerFunc){
-				//controllerFunc($scope);
-				warehouse[controllerName] =	{
-					dom			: elem,
-					controller	: controllerFunc,
-					children	: []
+					var binds	= context.binds,
+						bind,
+						nodes	= [];
+
+					for(var i=0; i<binds.length; i++){
+						bind	= binds[i];
+						if(bind.path==value){
+							nodes.push(bind.node);
+						} 
+					}
+					var	change	= function(){
+						for(var i=0; i<nodes.length; i++){
+							nodes[i].nodeValue = this.value;
+						}
+					}
+					node.addEventListener('input', change);
+				}
+			},
+			controllers	: {},
+			genMaps		: function(node, context){
+				if(!context) var context = {};
+
+				if( node && this.tagList[node.tagName] != false ){
+					//console.log(node.nodeType)
+					var	directives	= this.directives,
+						tagList		= this.tagList;
+
+					switch(node.nodeType){
+						case	1 ://ELEMENT_NODE
+							for(var key in directives){
+								var value	= node.getAttribute('data-'+key);
+								if(value){
+									directives[key].call(this, node, value, context);
+								}
+							}
+						break;
+						case	3 ://TEXT_NODE
+							if( context.scope && tagList[node.tagName] != false ){
+								//分割TEXT的{{}}为多个文本结点单位
+
+								var	nodeTexts	= node.nodeValue.split( /({{.+?}})/gim ),
+									parentNode	= node.parentNode,
+									len			= nodeTexts.length,
+									textNode,
+									nodeText,
+									key;
+
+								for(var i=0; i <= len; i++){
+									nodeText	= nodeTexts.pop();
+									nodeText	= nodeText ? nodeText : '';
+									if(i<len){
+										textNode			= node.cloneNode(false);
+										textNode.nodeValue	= nodeText;
+										parentNode.insertBefore( textNode,node );
+									}else{
+										textNode			= node;
+										textNode.nodeValue	= nodeText;
+									}
+									if( this.markRegex.test( nodeText ) ){
+										context.binds.push({
+											path	: RegExp.$1,
+											node	: textNode
+										});
+									}
+								}
+							}
+						break;
+					}
+
+					//children	
+					var child	= node.firstChild;
+					while (child) {
+						this.genMaps(child, context);
+						child	= child.nextSibling;
+					}
+				}
+			},
+			genBind		: function(binds, data){
+				for(var i=0; i<binds.length; i++){
+					var bind		= binds[i],
+						node		= bind.node,
+						pathArry	= bind.path.split('.'),
+						value		= '';
+
+					//console.log(bind,node,pathArry,data);
+					for(var j = 0; j < pathArry.length; j++){
+						//console.log(pathArry[j],data);
+						value	= data[pathArry[j]]
+						if(!value){
+							value	= '';	
+							break;
+						}
+					}
+					//console.log(data);
+					node.nodeValue	= value;
+				}
+			},		
+			bootstrap	: function(dom){
+				this.genMaps(dom);
+
+				//console.log(this.maps);
+				var maps	= this.maps;
+				for(var key in maps){
+					var $scope	= {},
+						map		= maps[key],
+						binds;
+
+					this.controllers[map.controller]($scope);
+					//console.log($scope);
+
+					//normal binds
+					this.genBind(map.binds, $scope);
+					//repeat binds
+					var repeats	= map.repeats;
+					//console.log(repeats)
+					for(var i=0; i<repeats.length; i++){
+						var repeat	= repeats[i],
+							node	= repeat.dom,
+							format	= repeat.format;
+
+						//console.log(node,format);	
+						if( /(\w+) *in *(\w+)/gim.test( format ) ){
+							var item		= RegExp.$1,
+								arrName		= RegExp.$2,
+								arr			= $scope[arrName];
+							
+							for(var j = 0; j<arr.length; j++){
+
+								var data	= {};
+								data[item]	= arr[j];
+								//console.log('binds',repeat.binds,data)
+								genBind(repeat.binds, data);
+
+								if(j<arr.length-1)node.parentNode.insertBefore( node.cloneNode(true), node );
+							}
+							//console.log(RegExp.$1,RegExp.$2);
+						}
+
+					}
 				}
 			}
+		}
+	};
+
+	
+	/**/
+	var doms	= document.getElementsByTagName('*'),
+		dom;
+	window.onload	= function(){
+		//angTpl auto bootstrap
+		for(var i=0; i<doms.length; i++){
+			dom	= doms[i];
+			if(dom.hasAttribute('data-app')){
+				//console.log('data-app',dom);
+				Utility.angTpl.bootstrap(dom);
+				break;
+			}
+		}
+	}
+	/**/
+
+/*
+	for(var key in maps){
+		var scope		= maps[key],
+			controller	= scope.controller,
+			binds		= scope.binds,
+			repeat		= scope.repeat,
+			dom			= scope.dom;
+		
+		
+	}
+*/	
+/*
+	var traverseDOM		= function( dom , func , scope ){
+		//children
+		//nextSibling
+		var domQueue	= [],
+			warehouse	= [],
+			item,
+			child,
+			controllerName,
+			controllerFunc,
+			repeat,
+			nextFlag;
+
+		domQueue.push(dom);
+		warehouse.push(new Node());
+		node	= warehouse[0];
+		while(domQueue.length != 0){
+			item			= domQueue.shift();
+			controllerName	= item.getAttribute('data-controller');
+			repeat			= item.getAttribute('data-repeat');
+			controllerFunc	= window[controllerName];
+		
+			if(controllerFunc){
+				
+				node.scope		= controllerFunc;
+				node.dom		= item;		
+				node.childNodes	= [];
+			}
+
+			//console.log(item);
 
 			if(repeat){
-				console.log(elem);
 				
-			}	
-
-			console.log($scope,controllerName,repeat,childNodes)
-		})	
-	}
+			}
 	
-	complie();
+			//children
+			child	= item.lastChild;
+			while (child) {
+				if(child.nodeType	!= 3) domQueue.unshift(child);
+				child	= child.previousSib	var digest	= function(){
+		
+	}ling;
+			}
+			console.log(domQueue);
+		}
+	}
+*/
+
 })();
 </script>
 </body>
