@@ -1,17 +1,47 @@
 <!doctype html>
 <head></head>
-<body>
-  <ul data-controller="controller">
-    <li data-controller="controller2" data-repeat="phone in phones">
-   		{{phone.name}}{{phone.snippet}}
-	    <p>{{phone.snippet}}</p>
-    </li>
-	<li>{{item.child}}</li>
-	<li data-repeat="phone in phones">
-   		{{phone.name}}
-	</li>
-  </ul>
-	<div>2</div>
+<body data-app>
+    <!--<ul data-controller="controller">
+        <li data-controller="controller2" data-repeat="phone in phones">
+            {{phone.name}}{{phone.snippet}}
+            <p data-event-click="">{{phone.snippet}}</p>
+            <img data-attr-src="{{phone.img}}"/>
+        </li>
+        <li>{{item.child}}</li>
+        <li data-repeat="phone in phones">
+            {{phone.name}}
+        </li>
+    </ul>
+    <div>2</div>-->
+    <div data-controller id="1">1
+        <div data-controller id="2">2
+            <div id="6">6
+                <div data-controller id="9">9
+                    <div id="13">13
+                        <div data-controller id="16">16</div>
+                        <div id="17">17
+                            <div id="19">19</div>
+                        </div>
+                    </div>
+                    <div id="14">14</div>
+                </div>
+            </div>
+            <div id="7">7
+                <div id="10">10</div>
+                <div data-controller id="11">11
+                    <div id="15">15
+                        <div data-controller id="18">18</div>
+                    </div>
+                </div>
+                <div id="12">12</div>
+            </div>
+        </div>
+        <div id="3">3</div>
+        <div id="4">4
+            <div id="8">8</div>
+        </div>
+        <div data-controller id="5">5</div>
+    </div>
 <script>
 function controller($scope){
 	$scope.item = { child : 'david' };	
@@ -24,288 +54,121 @@ function controller($scope){
 
 function controller2($scope){
 	$scope.phones = [
-		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
-		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
+		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S.", "img":"logo.png"},
+		{"name": "Motorola  XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
 		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
 	];	
 	
 }
+</script>
+<script>
+    //data-controller   $scope
+    //data-repeat       $scope
+    //data-app          $scope
+    //data-model        $input
+    //data-bind         $output
+    //data-attr-*       $output
+    //data-evt-*        $output
 
-;(function(){
-	var	angTpl	= {
-			maps		: {},
-			tagList		: {
-				'SCRIPT':false
-			},
-			markRegex	: /{{(.+?)}}/gim,
-			directives	: {
-				'bind'			: function(node, value, context){
-					//console.log('bind',node,value,context)
-					var textNode		= document.createTextNode('');
-					node.appendChild( textNode );
-					context.binds.push({
-						path	: value,
-						node	: textNode
-					});
-				},
-				'controller'	: function(node, value, context){
-					var map = {
-						controller	: value,
-						binds		: [],//{{}}
-						repeats		: [],
-						dom			: node
-					};
+//
+/*!
+ * domready (c) Dustin Diaz 2012 - License MIT
+ */
+!function(e,t){typeof module!="undefined"?module.exports=t():typeof define=="function"&&typeof define.amd=="object"?define(t):this[e]=t()}("domReady",function(e){function p(e){h=1;while(e=t.shift())e()}var t=[],n,r=!1,i=document,s=i.documentElement,o=s.doScroll,u="DOMContentLoaded",a="addEventListener",f="onreadystatechange",l="readyState",c=o?/^loaded|^c/:/^loaded|c/,h=c.test(i[l]);return i[a]&&i[a](u,n=function(){i.removeEventListener(u,n,r),p()},r),o&&i.attachEvent(f,n=function(){/^c/.test(i[l])&&(i.detachEvent(f,n),p())}),e=o?function(n){self!=top?h?n():t.push(n):function(){try{s.doScroll("left")}catch(t){return setTimeout(function(){e(n)},50)}n()}()}:function(e){h?e():t.push(e)}});
 
-					this.maps[value]	= map;	
-					context.binds		= map.binds;
-					context.scope		= value;
-				},
-				'repeat'		: function(node, value, context){
-					var	scope	= context.scope,
-						repeat	= {
-							dom		: node,
-							binds	: [],
-							format	: value 
-						};
-					this.maps[scope].repeats.push(repeat);
-					context.binds	= repeat.binds;
-				},
-				'src'			: function(node, value, context){
-					var scope		= context.scope,
-						attrNode	= document.createAttribute('src');
-					node.setAttributeNode(attrNode);
-						
-					context.binds.push({
-						path	: value,
-						node	: attrNode
-					});
-					
-				},
-				'model'			: function(node, value, context){
-					//console.log('bind',node,value,context)
-					//console.log(node,value);
+domReady(function(){
+    //get rootScope
+    var items = document.getElementsByTagName("*"),
+        dom,
+        $rootScope  = {"dom":'',"children":[] },
+        parentSign  = false,
+        temp        = [],
+        temp2       = [],
+        j           = 0,
+        parentNode;
 
-					var binds	= context.binds,
-						bind,
-						nodes	= [];
+    for (var i = items.length; i--;) {
+        //do stuff
+        dom         = items[i],
+        parentNode  = dom.parentNode; 
+        /*console.log(dom.firstChild.nodeValue);
+        if(dom.getAttribute('data-app')!=undefined){
+            $rootScope.dom  = dom;
+            //break;
+        }*/
+        //console.log('handle '+parentNode.id+'<-'+dom.id) 
+        if(dom.getAttribute && dom.getAttribute('data-app')!=undefined){
+            break; 
+        }
+        if(parentNode.getAttribute && parentNode.getAttribute('data-controller')!=undefined){
+            parentSign  = true;
+        }
+        if(dom.getAttribute && dom.getAttribute('data-controller')==undefined){//*-o o-o
+            for(j=0;j<temp.length; j++){
+                if(temp[j] && temp[j][0]   == dom){//*-o-* o-o-*
+                    temp[j][0]  = parentNode;
+                    //console.log("change "+temp[j][0].id+"<-"+temp[j][1].id)
+                    if(parentSign){//*-o-*
+                        //console.log('complete',temp[j][0].id,'<-',temp[j][1].id)
+                        drawScope(temp[j]);
+                        delete temp[j];
+                    }
+                } 
+                /*
+                var str='';
+                for(var k=0;k<temp.length; k++){
+                    if(temp[k]) str+=temp[k][0].id+"<-"+temp[k][1].id+'; '
+                }
+                console.log(str)
+                */
+            }
+        }else if(parentSign){//*-*
+            //console.log('complete',parentNode.id,'<-',dom.id)
+            //temp2.push([parentNode,dom]) 
+            drawScope([parentNode,dom]);
+            temp.push([parentNode.parentNode,parentNode]);
+        }else{//o-*
+            //console.log("push "+parentNode.id+"<-" +dom.id);
+            temp.push([parentNode,dom]) 
+        }
+        parentSign  = false;
+    };
 
-					for(var i=0; i<binds.length; i++){
-						bind	= binds[i];
-						if(bind.path==value){
-							nodes.push(bind.node);
-						} 
-					}
-					var	change	= function(){
-						for(var i=0; i<nodes.length; i++){
-							nodes[i].nodeValue = this.value;
-						}
-					}
-					node.addEventListener('input', change);
-				}
-			},
-			controllers	: {},
-			genMaps		: function(node, context){
-				if(!context) var context = {};
+    function drawScope(relation){
+        var child       = {"dom": relation[1], "children": []},
+            parent      = {"dom": relation[0], "children": []},
+            hasChild    = false,
+            i,
+            temp2i;
 
-				if( node && this.tagList[node.tagName] != false ){
-					//console.log(node.nodeType)
-					var	directives	= this.directives,
-						tagList		= this.tagList;
+        console.log('handle ',parent.dom.id,'<-',child.dom.id);
+        for(i=0; i<temp2.length; i++){
+            temp2i      = temp2[i];
 
-					switch(node.nodeType){
-						case	1 ://ELEMENT_NODE
-							for(var key in directives){
-								var value	= node.getAttribute('data-'+key);
-								if(value){
-									directives[key].call(this, node, value, context);
-								}
-							}
-						break;
-						case	3 ://TEXT_NODE
-							if( context.scope && tagList[node.tagName] != false ){
-								//分割TEXT的{{}}为多个文本结点单位
+            if(temp2i && child.dom == temp2i.dom){
+                parent.children.push(temp2[i]);
+                hasChild    = true;
+                delete temp2[i];
+            }
+            if(temp2i && parent.dom == temp2i.dom){
+                temp2[i].children.push(parent.children[0]);
+                parent  = temp2[i];
+                delete temp2[i];
+            }
+        }
+        if(!hasChild){
+            parent.children.push(child);  
+        }
+        temp2.push(parent);
+        console.log(parent,temp2); 
+    };
 
-								var	nodeTexts	= node.nodeValue.split( /({{.+?}})/gim ),
-									parentNode	= node.parentNode,
-									len			= nodeTexts.length,
-									textNode,
-									nodeText,
-									key;
-
-								for(var i=0; i <= len; i++){
-									nodeText	= nodeTexts.pop();
-									nodeText	= nodeText ? nodeText : '';
-									if(i<len){
-										textNode			= node.cloneNode(false);
-										textNode.nodeValue	= nodeText;
-										parentNode.insertBefore( textNode,node );
-									}else{
-										textNode			= node;
-										textNode.nodeValue	= nodeText;
-									}
-									if( this.markRegex.test( nodeText ) ){
-										context.binds.push({
-											path	: RegExp.$1,
-											node	: textNode
-										});
-									}
-								}
-							}
-						break;
-					}
-
-					//children	
-					var child	= node.firstChild;
-					while (child) {
-						this.genMaps(child, context);
-						child	= child.nextSibling;
-					}
-				}
-			},
-			genBind		: function(binds, data){
-				for(var i=0; i<binds.length; i++){
-					var bind		= binds[i],
-						node		= bind.node,
-						pathArry	= bind.path.split('.'),
-						value		= '';
-
-					//console.log(bind,node,pathArry,data);
-					for(var j = 0; j < pathArry.length; j++){
-						//console.log(pathArry[j],data);
-						value	= data[pathArry[j]]
-						if(!value){
-							value	= '';	
-							break;
-						}
-					}
-					//console.log(data);
-					node.nodeValue	= value;
-				}
-			},		
-			bootstrap	: function(dom){
-				this.genMaps(dom);
-
-				//console.log(this.maps);
-				var maps	= this.maps;
-				for(var key in maps){
-					var $scope	= {},
-						map		= maps[key],
-						binds;
-
-					this.controllers[map.controller]($scope);
-					//console.log($scope);
-
-					//normal binds
-					this.genBind(map.binds, $scope);
-					//repeat binds
-					var repeats	= map.repeats;
-					//console.log(repeats)
-					for(var i=0; i<repeats.length; i++){
-						var repeat	= repeats[i],
-							node	= repeat.dom,
-							format	= repeat.format;
-
-						//console.log(node,format);	
-						if( /(\w+) *in *(\w+)/gim.test( format ) ){
-							var item		= RegExp.$1,
-								arrName		= RegExp.$2,
-								arr			= $scope[arrName];
-							
-							for(var j = 0; j<arr.length; j++){
-
-								var data	= {};
-								data[item]	= arr[j];
-								//console.log('binds',repeat.binds,data)
-								genBind(repeat.binds, data);
-
-								if(j<arr.length-1)node.parentNode.insertBefore( node.cloneNode(true), node );
-							}
-							//console.log(RegExp.$1,RegExp.$2);
-						}
-
-					}
-				}
-			}
-		}
-	};
-
-	
-	/**/
-	var doms	= document.getElementsByTagName('*'),
-		dom;
-	window.onload	= function(){
-		//angTpl auto bootstrap
-		for(var i=0; i<doms.length; i++){
-			dom	= doms[i];
-			if(dom.hasAttribute('data-app')){
-				//console.log('data-app',dom);
-				Utility.angTpl.bootstrap(dom);
-				break;
-			}
-		}
-	}
-	/**/
-
-/*
-	for(var key in maps){
-		var scope		= maps[key],
-			controller	= scope.controller,
-			binds		= scope.binds,
-			repeat		= scope.repeat,
-			dom			= scope.dom;
-		
-		
-	}
-*/	
-/*
-	var traverseDOM		= function( dom , func , scope ){
-		//children
-		//nextSibling
-		var domQueue	= [],
-			warehouse	= [],
-			item,
-			child,
-			controllerName,
-			controllerFunc,
-			repeat,
-			nextFlag;
-
-		domQueue.push(dom);
-		warehouse.push(new Node());
-		node	= warehouse[0];
-		while(domQueue.length != 0){
-			item			= domQueue.shift();
-			controllerName	= item.getAttribute('data-controller');
-			repeat			= item.getAttribute('data-repeat');
-			controllerFunc	= window[controllerName];
-		
-			if(controllerFunc){
-				
-				node.scope		= controllerFunc;
-				node.dom		= item;		
-				node.childNodes	= [];
-			}
-
-			//console.log(item);
-
-			if(repeat){
-				
-			}
-	
-			//children
-			child	= item.lastChild;
-			while (child) {
-				if(child.nodeType	!= 3) domQueue.unshift(child);
-				child	= child.previousSib	var digest	= function(){
-		
-	}ling;
-			}
-			console.log(domQueue);
-		}
-	}
+    console.log(temp,temp2);
+    /*for(var i=0;i<temp.length; i++){
+        console.log(temp[i][0].id)
+    }
 */
-
-})();
+});
 </script>
 </body>
 </html>
