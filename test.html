@@ -1,7 +1,7 @@
 <!doctype html>
 <head></head>
 <body data-app>
-    <!--<ul data-controller="controller">
+    <ul data-controller="controller">
         <li data-controller="controller2" data-repeat="phone in phones">
             {{phone.name}}{{phone.snippet}}
             <p data-event-click="">{{phone.snippet}}</p>
@@ -12,14 +12,16 @@
             {{phone.name}}
         </li>
     </ul>
-    <div>2</div>-->
-    <div data-controller id="1">1
-        <div data-controller id="2">2
-            <div id="6">6
+    <div>2</div>
+    <div data-controller="controller" id="1">1
+        {{item.child}}ddlll
+        dfdf
+        <div data-controller="controller2" id="2">2
+            <div data-attr-class="**_{{class.a}}" id="6">6
                 <div data-controller id="9">9
-                    <div id="13">13
-                        <div data-controller id="16">16</div>
-                        <div id="17">17
+                    <div id="13" data-controller="controller">13
+                        <div data-evt-click="click" data-repeat="item in phones" id="16">{{item.name}}16</div>
+                        <div data-attr-width="10" id="17">17
                             <div id="19">19</div>
                         </div>
                     </div>
@@ -27,7 +29,7 @@
                 </div>
             </div>
             <div id="7">7
-                <div id="10">10</div>
+                <div id="10" data-bind="{{class.a}}">10</div>
                 <div data-controller id="11">11
                     <div id="15">15
                         <div data-controller id="18">18</div>
@@ -49,15 +51,19 @@ function controller($scope){
 		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
 		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
 		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
-	];	
+    ];
+    $scope.click    = function(){
+        console.log('click'); 
+    }
 }
 
 function controller2($scope){
-	$scope.phones = [
+	$scope.phones   = [
 		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S.", "img":"logo.png"},
 		{"name": "Motorola  XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
 		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
-	];	
+    ];
+    $scope.class    = {a: "hi"}
 	
 }
 </script>
@@ -69,105 +75,186 @@ function controller2($scope){
     //data-bind         $output
     //data-attr-*       $output
     //data-evt-*        $output
+    //data-repeat-index $repeat sign
 
-//
+var $rootElement = document, $rootScope = {
+    dom: [ $rootElement ],
+    parent: "",
+    scope: {},
+    binds: [],
+    children: []
+}, $eval = function(template, value) {
+    var valArr = template.split(/({{.+?}})/gim), i, j, val, pathArr, data = value;
+    for (i = 0; i < valArr.length; i++) {
+        val = valArr[i] || "";
+        if (/{{(.*?)}}/gim.test(val)) {
+            pathArr = RegExp.$1.split(".");
+            for (j = 0; j < pathArr.length; j++) {
+                data = data[pathArr[j]];
+                if (!data) {
+                    data = "";
+                    break;
+                }
+            }
+            valArr[i] = data;
+        }
+    }
+    return valArr.join("");
+}, addEvent = function(evnt, elem, func) {
+    if (elem.addEventListener) {
+        // W3C DOM
+        elem.addEventListener(evnt, func, false);
+    } else if (elem.attachEvent) {
+        // IE DOM
+        elem.attachEvent("on" + evnt, func);
+    } else {
+        // No much to do
+        elem[evnt] = func;
+    }
+}, directives = {
+    "data-bind": function(value, $scope) {
+        var node;
+        if (this.firstChild) {
+            node = this.firstChild;
+        } else {
+            node = document.createTextNode();
+            this.appendChild(node);
+        }
+        node.nodeValue = $eval(value, $scope.scope);
+        $scope.binds.push({
+            node: node,
+            scope: $scope.scope,
+            template: value
+        });
+    },
+    "data-model": function() {},
+    "data-attr-(.*)": function(value, $scope, param) {
+        var attr = document.createAttribute(param);
+        attr.value = $eval(value, $scope.scope);
+        $scope.binds.push({
+            node: attr,
+            scope: $scope.scope,
+            template: value
+        });
+        this.setAttributeNode(attr);
+    },
+    "data-evt-(.*)": function(value, $scope, evt) {
+        var scope = $scope, func;
+        while (!(func = scope.scope[value])) {
+            scope = scope.parent;
+        }
+        //console.log(func)
+        addEvent(evt, this, func);
+    }
+}, textNode = function(node, $scope) {
+    var valArr = node.nodeValue.split(/({{.+?}})/gim);
+    if (valArr.length <= 1) return;
+    var parentNode = node.parentNode, data = $scope.scope, len = valArr.length, has = false, i, j, val, pathArr, textNode, template;
+    while (valArr.length > 0) {
+        val = valArr.shift() || "";
+        has = /{{(.*?)}}/gim.test(val);
+        if (has) {
+            template = RegExp.$1;
+            pathArr = template.split(".");
+            for (j = 0; j < pathArr.length; j++) {
+                data = data[pathArr[j]];
+                if (!data) {
+                    data = "";
+                    break;
+                }
+            }
+            val = data;
+        }
+        if (valArr.length > 0) {
+            textNode = node.cloneNode(false);
+            textNode.nodeValue = val;
+            parentNode.insertBefore(textNode, node);
+        } else {
+            textNode = node;
+            textNode.nodeValue = val;
+        }
+        if (has) $scope.binds.push({
+            node: textNode,
+            scope: $scope.scope,
+            template: "{{" + template + "}}"
+        });
+    }
+}, buildScope = function(node, $scope) {
+    if (node.tagName == "SCRIPT") return;
+    if (node.nodeType == 1) {
+        //ELEMENT_NODE
+        var attributes = node.attributes, i, attribute, attrName, attrValue, key;
+        //data-controller
+        if (attrValue = node.getAttribute("data-controller")) {
+            var scope = {}, child;
+            window[attrValue](scope);
+            console.log(scope);
+            child = {
+                dom: [ node ],
+                scope: scope,
+                binds: [],
+                parent: $scope,
+                children: [],
+                events: []
+            };
+            $scope.children.push(child);
+            var $scope = child;
+        }
+        //data-repeat
+        if (attrValue = node.getAttribute("data-repeat")) {
+            if (/(\w*) +in +(\w*)/gim.test(attrValue)) {
+                var scope = $scope.scope[RegExp.$2], child = {
+                    dom: [ node ],
+                    scope: {},
+                    binds: [],
+                    parent: $scope,
+                    children: []
+                };
+                if (index = node.getAttribute("data-repeat-index")) {
+                    child.scope[RegExp.$1] = scope[Number(index)];
+                } else {
+                    for (i = scope.length - 1; i > 0; i--) {
+                        tempNode = node.cloneNode(true);
+                        tempNode.setAttribute("data-repeat-index", i);
+                        node.parentNode.insertBefore(tempNode, node.nextSibling);
+                    }
+                    node.setAttribute("data-repeat-index", 0);
+                    child.scope[RegExp.$1] = scope[0];
+                }
+                $scope.children.push(child);
+                console.log(child);
+                var $scope = child;
+            }
+        }
+        //data-other no $scope modify
+        for (i = 0; i < attributes.length; i++) {
+            attribute = attributes[i], attrName = attribute.nodeName, attrValue = attribute.nodeValue;
+            for (key in directives) {
+                if (new RegExp(key, "gim").test(attrName)) {
+                    var R = RegExp;
+                    directives[key].call(node, attrValue, $scope, R.$1, R.$2, R.$3, R.$4, R.$5, R.$6, R.$7, R.$8, R.$9);
+                }
+            }
+        }
+    } else if (node.nodeType == 3) {
+        //TEXT_NODE
+        textNode(node, $scope);
+    }
+    //children	
+    var child = node.firstChild;
+    while (child) {
+        buildScope(child, $scope);
+        child = child.nextSibling;
+    }
+};
 /*!
  * domready (c) Dustin Diaz 2012 - License MIT
  */
 !function(e,t){typeof module!="undefined"?module.exports=t():typeof define=="function"&&typeof define.amd=="object"?define(t):this[e]=t()}("domReady",function(e){function p(e){h=1;while(e=t.shift())e()}var t=[],n,r=!1,i=document,s=i.documentElement,o=s.doScroll,u="DOMContentLoaded",a="addEventListener",f="onreadystatechange",l="readyState",c=o?/^loaded|^c/:/^loaded|c/,h=c.test(i[l]);return i[a]&&i[a](u,n=function(){i.removeEventListener(u,n,r),p()},r),o&&i.attachEvent(f,n=function(){/^c/.test(i[l])&&(i.detachEvent(f,n),p())}),e=o?function(n){self!=top?h?n():t.push(n):function(){try{s.doScroll("left")}catch(t){return setTimeout(function(){e(n)},50)}n()}()}:function(e){h?e():t.push(e)}});
-
+;
 domReady(function(){
-    //get rootScope
-    var items = document.getElementsByTagName("*"),
-        dom,
-        $rootScope  = {"dom":'',"children":[] },
-        parentSign  = false,
-        temp        = [],
-        temp2       = [],
-        j           = 0,
-        parentNode;
-
-    for (var i = items.length; i--;) {
-        //do stuff
-        dom         = items[i],
-        parentNode  = dom.parentNode; 
-        /*console.log(dom.firstChild.nodeValue);
-        if(dom.getAttribute('data-app')!=undefined){
-            $rootScope.dom  = dom;
-            //break;
-        }*/
-        //console.log('handle '+parentNode.id+'<-'+dom.id) 
-        if(dom.getAttribute && dom.getAttribute('data-app')!=undefined){
-            break; 
-        }
-        if(parentNode.getAttribute && parentNode.getAttribute('data-controller')!=undefined){
-            parentSign  = true;
-        }
-        if(dom.getAttribute && dom.getAttribute('data-controller')==undefined){//*-o o-o
-            for(j=0;j<temp.length; j++){
-                if(temp[j] && temp[j][0]   == dom){//*-o-* o-o-*
-                    temp[j][0]  = parentNode;
-                    //console.log("change "+temp[j][0].id+"<-"+temp[j][1].id)
-                    if(parentSign){//*-o-*
-                        //console.log('complete',temp[j][0].id,'<-',temp[j][1].id)
-                        drawScope(temp[j]);
-                        delete temp[j];
-                    }
-                } 
-                /*
-                var str='';
-                for(var k=0;k<temp.length; k++){
-                    if(temp[k]) str+=temp[k][0].id+"<-"+temp[k][1].id+'; '
-                }
-                console.log(str)
-                */
-            }
-        }else if(parentSign){//*-*
-            //console.log('complete',parentNode.id,'<-',dom.id)
-            //temp2.push([parentNode,dom]) 
-            drawScope([parentNode,dom]);
-            temp.push([parentNode.parentNode,parentNode]);
-        }else{//o-*
-            //console.log("push "+parentNode.id+"<-" +dom.id);
-            temp.push([parentNode,dom]) 
-        }
-        parentSign  = false;
-    };
-
-    function drawScope(relation){
-        var child       = {"dom": relation[1], "children": []},
-            parent      = {"dom": relation[0], "children": []},
-            hasChild    = false,
-            i,
-            temp2i;
-
-        console.log('handle ',parent.dom.id,'<-',child.dom.id);
-        for(i=0; i<temp2.length; i++){
-            temp2i      = temp2[i];
-
-            if(temp2i && child.dom == temp2i.dom){
-                parent.children.push(temp2[i]);
-                hasChild    = true;
-                delete temp2[i];
-            }
-            if(temp2i && parent.dom == temp2i.dom){
-                temp2[i].children.push(parent.children[0]);
-                parent  = temp2[i];
-                delete temp2[i];
-            }
-        }
-        if(!hasChild){
-            parent.children.push(child);  
-        }
-        temp2.push(parent);
-        console.log(parent,temp2); 
-    };
-
-    console.log(temp,temp2);
-    /*for(var i=0;i<temp.length; i++){
-        console.log(temp[i][0].id)
-    }
-*/
+    buildScope($rootElement, $rootScope);
+    console.log($rootScope)
 });
 </script>
 </body>
