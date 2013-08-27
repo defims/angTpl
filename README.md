@@ -1,4 +1,4 @@
 angTpl
 ======
 
-An light weight template engine like angular!
+An light weight two-way data bind template engine like angularjs!
