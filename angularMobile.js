@@ -1,89 +1,26 @@
-<!doctype html>
-<head></head>
-<body data-app>
-    <ul data-controller="controller">
-        <li data-controller="controller2" data-repeat="phone in phones">
-            {{phone.name}}{{phone.snippet}}
-            <p data-event-click="">{{phone.snippet}}</p>
-            <img data-attr-src="{{phone.img}}"/>
-        </li>
-        <li>{{item.child}}</li>
-        <li data-repeat="phone in phones">
-            {{phone.name}}
-        </li>
-    </ul>
-    <div>2</div>
-    <div data-controller="controller" id="1">1
-        {{item.child}}ddlll
-        dfdf
-        <div data-controller="controller2" id="2">2
-            <div data-attr-class="**_{{class.a}}" id="6">6
-                <div data-controller id="9">9
-                    <div id="13" data-controller="controller">13
-                        <div data-evt-click="click" data-repeat="item in phones" id="16">{{item.name}}16</div>
-                        <div data-attr-width="10" id="17">17
-                            <div id="19">19</div>
-                        </div>
-                    </div>
-                    <div id="14">14</div>
-                </div>
-            </div>
-            <div id="7">7
-                <div id="10" data-bind="{{class.a}}">10</div>
-                <div data-controller id="11">11
-                    <div id="15">15
-                        <div data-controller id="18">18</div>
-                    </div>
-                </div>
-                <div id="12">12</div>
-            </div>
-        </div>
-        <div id="3">3</div>
-        <div id="4">4
-            <div id="8">8</div>
-        </div>
-        <div data-controller id="5">5</div>
-    </div>
-<script>
-function controller($scope){
-	$scope.item = { child : 'david' };	
-	$scope.phones = [
-		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
-		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
-		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
-    ];
-    $scope.click    = function(){
-        console.log('click'); 
+(function(){
+
+//data-controller   $scope
+//data-repeat       $scope
+//data-app          $scope
+//data-model        $input
+//data-bind         $output
+//data-attr-*       $output
+//data-evt-*        $output
+//data-repeat-index $repeat sign
+
+var addEvent = function(evnt, elem, func) {
+    if (elem.addEventListener) {
+        // W3C DOM
+        elem.addEventListener(evnt, func, false);
+    } else if (elem.attachEvent) {
+        // IE DOM
+        elem.attachEvent("on" + evnt, func);
+    } else {
+        // No much to do
+        elem[evnt] = func;
     }
-}
-
-function controller2($scope){
-	$scope.phones   = [
-		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S.", "img":"logo.png"},
-		{"name": "Motorola  XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
-		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
-    ];
-    $scope.class    = {a: "hi"}
-	
-}
-</script>
-<script>
-    //data-controller   $scope
-    //data-repeat       $scope
-    //data-app          $scope
-    //data-model        $input
-    //data-bind         $output
-    //data-attr-*       $output
-    //data-evt-*        $output
-    //data-repeat-index $repeat sign
-
-var $rootElement = document, $rootScope = {
-    dom: [ $rootElement ],
-    parent: "",
-    scope: {},
-    binds: [],
-    children: []
-}, $eval = function(template, value) {
+    }, $eval = function(template, value) {
     var valArr = template.split(/({{.+?}})/gim), i, j, val, pathArr, data = value;
     for (i = 0; i < valArr.length; i++) {
         val = valArr[i] || "";
@@ -100,16 +37,64 @@ var $rootElement = document, $rootScope = {
         }
     }
     return valArr.join("");
-}, addEvent = function(evnt, elem, func) {
-    if (elem.addEventListener) {
-        // W3C DOM
-        elem.addEventListener(evnt, func, false);
-    } else if (elem.attachEvent) {
-        // IE DOM
-        elem.attachEvent("on" + evnt, func);
-    } else {
-        // No much to do
-        elem[evnt] = func;
+}, services = {
+    "$rootElement" : document, 
+    "$rootScope" : {
+        dom: [ document ],
+        parent: "",
+        scope: {},
+        binds: [],
+        children: []
+    },
+    "$http" : function(config) {
+        //console.log('$http');
+        var success = function(){},
+            obj = {
+                "success" : function(func){
+                    success = func; 
+                }
+            }
+        if(typeof window.XMLHttpRequest === 'undefined' &&
+            typeof window.ActiveXObject === 'function') {
+            window.XMLHttpRequest = function() {
+                try { return new ActiveXObject('Msxml2.XMLHTTP.6.0'); } catch(e) {}
+                try { return new ActiveXObject('Msxml2.XMLHTTP.3.0'); } catch(e) {}
+                return new ActiveXObject('Microsoft.XMLHTTP');
+            };
+        };
+        
+        var url         = config.url || '',
+            dataType    = config.dataType ? config.dataType.toUpperCase() : 'TEXT', 
+            type        = config.type ? config.type.toUpperCase() : 'GET', 
+            data        = config.data || null,
+            xhr         = new XMLHttpRequest,
+            response;
+        xhr.open( type, url, true );
+        if(data) xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState != 4) return;
+            if (xhr.status != 200 && xhr.status != 304) {
+                return;
+            }
+            response    = xhr.responseText;
+            switch(dataType.toLowerCase()){
+                case "json":
+                    //console.log('json')
+                    if (typeof(JSON) == 'undefined'){  
+                         resonse = eval("("+response+")"); //ugly 
+                    }else{  
+                         response = JSON.parse(response);  
+                    }  
+                break;
+            }
+            success(response);
+        }
+        if (xhr.readyState == 4) return;
+        xhr.send(data);
+        return obj;
+    }, 
+    "$resource" : function(){//
+
     }
 }, directives = {
     "data-bind": function(value, $scope) {
@@ -186,9 +171,19 @@ var $rootElement = document, $rootScope = {
         var attributes = node.attributes, i, attribute, attrName, attrValue, key;
         //data-controller
         if (attrValue = node.getAttribute("data-controller")) {
-            var scope = {}, child;
-            window[attrValue](scope);
-            console.log(scope);
+            var scope = {}, child, dependency, dependencies, i;
+            //get controller
+            /*DI*
+            if(/\((.*?)\)/gim.test(window[attrValue].toString())){
+                dependencies  = RegExp.$1.replace(' ','').split(',');
+                for(i = 0; i<dependencies.length; i++){
+                    dependency  = dependencies[i];
+                }
+            }
+            **/
+            window[attrValue](scope,services.$http);
+
+            //console.log(scope);
             child = {
                 dom: [ node ],
                 scope: scope,
@@ -222,7 +217,7 @@ var $rootElement = document, $rootScope = {
                     child.scope[RegExp.$1] = scope[0];
                 }
                 $scope.children.push(child);
-                console.log(child);
+                //console.log(child);
                 var $scope = child;
             }
         }
@@ -248,14 +243,12 @@ var $rootElement = document, $rootScope = {
     }
 };
 /*!
- * domready (c) Dustin Diaz 2012 - License MIT
- */
+* domready (c) Dustin Diaz 2012 - License MIT
+*/
 !function(e,t){typeof module!="undefined"?module.exports=t():typeof define=="function"&&typeof define.amd=="object"?define(t):this[e]=t()}("domReady",function(e){function p(e){h=1;while(e=t.shift())e()}var t=[],n,r=!1,i=document,s=i.documentElement,o=s.doScroll,u="DOMContentLoaded",a="addEventListener",f="onreadystatechange",l="readyState",c=o?/^loaded|^c/:/^loaded|c/,h=c.test(i[l]);return i[a]&&i[a](u,n=function(){i.removeEventListener(u,n,r),p()},r),o&&i.attachEvent(f,n=function(){/^c/.test(i[l])&&(i.detachEvent(f,n),p())}),e=o?function(n){self!=top?h?n():t.push(n):function(){try{s.doScroll("left")}catch(t){return setTimeout(function(){e(n)},50)}n()}()}:function(e){h?e():t.push(e)}});
 ;
 domReady(function(){
-    buildScope($rootElement, $rootScope);
-    console.log($rootScope)
+    buildScope(services.$rootElement, services.$rootScope);
+    console.log(services.$rootScope)
 });
-</script>
-</body>
-</html>
+})();

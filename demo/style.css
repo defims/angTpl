@@ -1,0 +1,5 @@
+*[data-controller],*[data-repeat]{
+    border: red 1px solid;
+    margin: 1em;
+    border-radius: 4px;
+}
