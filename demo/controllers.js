@@ -1,7 +1,9 @@
 function controller($scope, $http){
 	$scope.item = { child : 'david' };	
 	$scope.phones = [
-		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S."},
+		{"name": "Nexus S", "snippet": "Fast just got faster with Nexus S.", "click": function(){
+    console.log('click');                                                                            
+}},
 		{"name": "Motorola XOOM™ with Wi-Fi", "snippet": "The Next, Next Generation tablet."},
 		{"name": "MOTOROLA XOOM™", "snippet": "The Next, Next Generation tablet."}
     ];

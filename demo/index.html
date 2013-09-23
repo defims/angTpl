@@ -21,12 +21,18 @@
     <div data-controller="controller" id="1">1
         {{item.child}}ddlll
         dfdf
+        <input type="text" data-model="item.child"/>
+        <input type="text" data-model="phones[0].name"/>
+        {{item.child}}
         <div data-controller="controller2" id="2">2
             <div data-attr-class="**_{{class.a}}" id="6">6
                 <div data-controller id="9">9
                     <div id="13" data-controller="controller">13
-                        <div data-evt-click="click" data-repeat="item in phones" id="16">{{item.name}}16</div>
+                        <div data-evt-click="{{item.click}}" data-repeat="item in phones" id="16">{{item.name}}16
+                            <div data-controller="controller2">{{class.a}}</div> 
+                        </div>
                         <div data-attr-width="10" id="17">17
+                            {{item.child}}
                             <div id="19">19</div>
                         </div>
                     </div>
