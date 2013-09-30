@@ -11,12 +11,16 @@
 var $watchTree   = {},
 injector    =   {
     invoke: function(target) {
-        var FN_ARGS         = /^function\s*[^\(]*\(\s*([^\)]*)\)/m,
-            FN_ARG_SPLIT    = /,/,
-            FN_ARG          = /^\s*(_?)(\S+?)\1\s*$/,
-            STRIP_COMMENTS  = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg,
-            text            = target.toString(),
-            args            = text.match(FN_ARGS)[1].split(',');
+        if(target.$inject){
+            var args = target.$inject; 
+        }else{
+            var FN_ARGS         = /^function\s*[^\(]*\(\s*([^\)]*)\)/m,
+                FN_ARG_SPLIT    = /,/,
+                FN_ARG          = /^\s*(_?)(\S+?)\1\s*$/,
+                STRIP_COMMENTS  = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg,
+                text            = target.toString(),
+                args            = text.match(FN_ARGS)[1].split(',');
+        }
         
         target.apply(target, this.getDependencies(args));
     },
@@ -408,10 +412,10 @@ var domready = (function (ready) {
 /**/
 
 domready(function(){
-    //exports.init  = function(ctrls){
-        //services['$controller'] = ctrls;
+//    exports.init  = function(ctrls){
+        //services['$controller'] = (new ctrls()).controllers;
         $compile(services.$rootElement, services.$watchTree, services.$scope);
-    //} 
+//    } 
 });
 
 })();

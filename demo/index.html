@@ -3,20 +3,142 @@
     <meta charset="utf8"/>
     <link rel="stylesheet" href="style.css">
     <script src="controllers.js"></script>
-    <script src="../angularMobile.js"></script>
+    <!--<script src="../angularMobile.js"></script>-->
 </head>
 <body data-app>
-    <!--<ul data-controller="controller">
+    <ul data-controller="controller">
         <li data-controller="controller2" data-repeat="phone in phones">
             {{phone.name}}{{phone.snippet}}
             <p data-event-click="">{{phone.snippet}}</p>
-            <img data-attr-src="{{phone.img}}"/>
+            <img data-attr-src="text{{phone.img}}content"/>
         </li>
         <li>{{item.child}}</li>
         <li data-repeat="item in phones">
             {{item.name}}
         </li>
-    </ul>-->
+    </ul>
+    <!--<div id='1'>
+        <div id='2'>
+            <div id='3'>
+                <div id='4'></div>
+           </div>
+            <div id='5'>
+                <div id='6'></div>
+            </div>
+            <div id='7'></div>
+        </div>
+        <div id='8'></div>
+    </div>-->
+<script>
+/*!
+ * Small Walker - v0.1.1 - 5/5/2011
+ * http://benalman.com/
+ * 
+ * Copyright (c) 2011 "Cowboy" Ben Alman
+ * Dual licensed under the MIT and GPL licenses.
+ * http://benalman.com/about/license/
+ */
+ 
+// Walk the DOM, depth-first (HTML order). Inside the callback, `this` is the
+// element, and the only argument passed is the current depth. If the callback
+// returns false, its children will be skipped.
+// 
+// Based on https://gist.github.com/240274
+ 
+function walk(node, callback) {
+    var depth   = 0,
+        skip, tmp;
+    // This depth value will be incremented as the depth increases and
+    // decremented as the depth decreases. The depth of the initial node is 0.
+
+    // Always start with the initial element.
+    do {
+        if ( !skip ) {
+            // Call the passed callback in the context of node, passing in the
+            // current depth as the only argument. If the callback returns false,
+            // don't process any of the current node's children.
+            skip = callback.call(node, depth) === false;
+        }
+
+        if ( !skip && (tmp = node.firstChild) ) {
+          // If not skipping, get the first child. If there is a first child,
+          // increment the depth since traversing downwards.
+          depth++;
+        } else if ( tmp = node.nextSibling ) {
+          // If skipping or there is no first child, get the next sibling. If
+          // there is a next sibling, reset the skip flag.
+          skip = false;
+        } else {
+          // Skipped or no first child and no next sibling, so traverse upwards,
+          tmp = node.parentNode;
+          // and decrement the depth.
+          depth--;
+          // Enable skipping, so that in the next loop iteration, the children of
+          // the now-current node (parent node) aren't processed again.
+          skip = true;
+        }
+
+        // Instead of setting node explicitly in each conditional block, use the
+        // tmp var and set it here.
+        node = tmp;
+
+        // Stop if depth comes back to 0 (or goes below zero, in conditions where
+        // the passed node has neither children nore next siblings).
+    } while ( depth > 0 );
+}
+var directives  = {
+    'data-controller'   : function(value){
+        console.log('set message root: /'+value)
+    },
+    'data-repeat'       : function(){
+    },
+    'data-model'        : function(){
+    },
+    'data-attr-(.*)'    : function(value, attr){
+        /*
+        var result      = [],
+            template    = [],
+            arr         = value.split(''),
+            flag        = false,
+            len         = value.length,
+            i,l1,l2,l3,letter;
+        for(i=0; i<len; i++){
+            l1 = arr[i];
+            l2 = arr[i+1];
+            if(flag && l1 == '}' && l2 == '}'){
+                flag    = false;
+                i+=2;
+            }else if(flag){
+                template.push(l1);
+                i++;
+            }else if(!flag && l1 == '{' && l2 == '{'){
+                flag    = true;  
+                i += 2;
+            }
+        }
+        console.log(result.join(''))
+        */
+    },
+    'data-evt-(.*)'     : function(value, evt){
+    }
+}
+walk(document.documentElement, function(depth, scopes) {
+    if(this.nodeType == 1){
+        var attributes  = this.attributes,
+            len         = attributes.length,
+            R           = RegExp,
+            attribute;
+        while(len--){
+            attribute   = attributes[len];
+            for(key in directives){
+                if(new RegExp(key, "gim").test(attribute.nodeName))
+                    directives[key].call(this, attribute.nodeValue, R.$1, R.$2, R.$3, R.$4, R.$5, R.$6, R.$7, R.$8, R.$9);
+            }
+        }
+    }
+});
+</script>
+    <!--
     <div>2</div>
     <div data-controller="controller" id="1">1
         {{item.child}}ddlll
@@ -54,6 +176,6 @@
             <div id="8">8</div>
         </div>
         <div data-controller id="5">5</div>
-    </div>
+    </div>-->
 </body>
 </html>
