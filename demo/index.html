@@ -10,7 +10,7 @@
         <li data-controller="controller2" data-repeat="phone in phones">
             {{phone.name}}{{phone.snippet}}
             <p data-event-click="">{{phone.snippet}}</p>
-            <img data-attr-src="text{{phone.img}}content"/>
+            <img data-attribute-src="text{{phone.img}}content"/>
         </li>
         <li>{{item.child}}</li>
         <li data-repeat="item in phones">
@@ -30,6 +30,156 @@
         <div id='8'></div>
     </div>-->
 <script>
+/*
+Copyright (c) 2013 Defims Loong https://github.com/defims/PubSub
+License: GPL v2
+
+https://github.com/defims/PubSub
+*/
+
+(function(root, factory){
+	'use strict';
+
+	// CommonJS
+	if (typeof exports === 'object' && module){
+		module.exports = factory();
+
+	// AMD
+	} else if (typeof define === 'function' && define.amd){
+		define(factory);
+	// Browser
+	} else {
+		root.PubSub = factory();
+	}
+}( ( typeof window === 'object' && window ) || this, function(){
+    
+    /*
+     *  Node
+     */
+    var Node = function(){
+        this.key;
+        this.parent;
+        this.children           = [];
+        this.subscribers        = [];
+    };
+
+
+    /*
+     *  TopicTree
+     */
+
+    var TopicTree   = function(){
+        this.root               = new Node;
+        this.current            = this.root;
+        this.length             = 0;
+        this.subscribersByToken = [];
+    };
+    TopicTree.prototype = {
+        getNode : function(/*Array*/path){
+            var node    = this.current,
+                match   = false,
+                len,children,key;
+            while(path.length){
+                key         = path.shift();
+                match       = false;
+                children    = node.children;
+                len         = children.length;
+                while(len--){
+                    node    = children[len];
+                    if(node.key == key){
+                        match   = true;
+                        break;
+                    }
+                }
+            }
+            return (match ? node : false);
+        },
+        mount   : function(/*Array*/path, /*function*/func){
+            var node        = this.current,
+                token       = ++this.length,
+                key,len,children,match;
+            while(path.length){
+                key         = path.shift();
+                match       = false;
+                parent      = node;
+                children    = node.children;
+                len         = children.length;
+                while(len--){
+                    node   = children[len];
+                    if(node.key == key){
+                        match   = true;
+                        break;
+                    }
+                }
+                if( !match ){
+                    node          = new Node;//change reference
+                    node.key      = key;
+                    node.parent   = parent;
+                    parent.children.push(node);
+                }
+            }
+            node.subscribers.push({"token": token, "func" : func});
+            this.subscribersByToken[token] = {"node": node, "id": node.subscribers.length - 1};
+            return token;
+        },
+        unmountByToken  : function(token){
+            var item            = this.subscribersByToken[token],
+                node            = item.node,
+                subscribers     = node.subscribers,
+                id              = item.id;
+            node.subscribers    = subscribers.slice(0,id).concat(subscribers.slice(id+1, subscribers.length));
+        },
+        unmountByPath   : function(path){
+            this.getNode(path).subscribers  = [];
+        }
+    };
+
+
+    /*
+     *  PubSub
+     *
+     */
+    var PubSub  = function(){
+        this.topicTree  = new TopicTree;
+    };
+    PubSub.prototype    = {
+        message2path    : function(message){
+            return message.replace(/[\.\[]/gim,'/').replace(/\]/gim,'').split('/');
+        },
+        setMessageRoot  : function(messageRoot){
+            var topicTree       = this.topicTree;
+            topicTree.current   = topicTree.getNode(this.message2path(messageRoot));
+        },
+		restoreMessageRoot	: function(){
+			//use memento	
+		},
+        publish         : function(message, args){
+            var node    = this.topicTree.getNode(this.message2path(message)); 
+            if(!node) return false;
+            var subscribers = node.subscribers,
+                len         = subscribers ? subscribers.length : 0;
+            setTimeout(function () {
+                while (len--) subscribers[len].func(args);
+            }, 0);
+
+            return true;
+        },
+        subscribe       : function(message, func){
+            return this.topicTree.mount(this.message2path(message), func);
+        },
+        unsubscribe     : function(tokenOrPath){
+            var type    = typeof(tokenOrPath);
+            if(type  == 'string'){//path
+                return this.topicTree.unmountByPath(this.message2path(tokenOrPath));
+            }else if(type == 'number'){//token
+                return this.topicTree.unmountByToken(tokenOrPath);
+            }
+        }
+    };
+
+    return new PubSub;
+}));
+
 /*!
  * Small Walker - v0.1.1 - 5/5/2011
  * http://benalman.com/
@@ -85,43 +235,98 @@ function walk(node, callback) {
         // Stop if depth comes back to 0 (or goes below zero, in conditions where
         // the passed node has neither children nore next siblings).
     } while ( depth > 0 );
-}
+};
+
 var directives  = {
     'data-controller'   : function(value){
         console.log('set message root: /'+value)
+		//set root to controller
     },
-    'data-repeat'       : function(){
+    'data-repeat'       : function(value){
+        if( /(\w*) +in +(\w*)/gim.test(value) ){
+			var R$1	= RegExp.$1,
+				R$2	= RegExp.$2;
+			//subscribe collects
+			PubSub.subscribe(R$2 , (function(node, key){
+				return function(data){
+
+					
+					console.log(node,key,data)
+					var len	= data.length;
+					while(len--){
+					}
+				}
+			})(this, R$1));
+			
+			//set root to item
+			/*subscribe template item
+			PubSub.subscribe(R$2 + '.' + R$1, (function(){
+				return function(){//when template change ,trigger it;
+						
+				}
+			})(this))*/
+        }
     },
     'data-model'        : function(){
     },
-    'data-attr-(.*)'    : function(value, attr){
-        /*
-        var result      = [],
-            template    = [],
-            arr         = value.split(''),
-            flag        = false,
+    'data-attribute-(.*)'    : function(value, attr){
+        var flag        = false,
             len         = value.length,
-            i,l1,l2,l3,letter;
-        for(i=0; i<len; i++){
-            l1 = arr[i];
-            l2 = arr[i+1];
-            if(flag && l1 == '}' && l2 == '}'){
-                flag    = false;
-                i+=2;
-            }else if(flag){
-                template.push(l1);
-                i++;
-            }else if(!flag && l1 == '{' && l2 == '{'){
-                flag    = true;  
-                i += 2;
+            tmp         = '',
+            l1,l2,func;
+
+        while(len--){
+            l1 = value[len];
+            l2 = value[len-1];
+            if(flag){
+                if(l1 == '{' && l2 == '{'){
+                    PubSub.subscribe(tmp, (function(node, attr){
+                        return function(data){
+                            node.setAttribute(attr,data);//only one template
+                        }
+                    })(this, attr));
+                    flag    = false;
+                    tmp     = '';
+                    len --;
+                }else if(l1 != ' '){
+                    tmp = l1 + tmp;
+                }
+            }else if(!flag && l1 == '}' && l2 == '}'){
+                flag    = true;
+                len --;
             }
         }
-        console.log(result.join(''))
-        */
     },
-    'data-evt-(.*)'     : function(value, evt){
+    'data-event-(.*)'     : function(value, evt){
+        var flag    = false,
+            len     = value.length,
+            tmp     = '',
+            l1,l2;
+
+        while(len--){
+            l1 = value[len];
+            l2 = value[len-1];
+            if(flag){
+                if(l1 == '{' && l2 == '{'){
+                    flag    = false;
+                    PubSub.subscribe(tmp, (function(node){
+                        return function(data){
+                            //node.nodeValue  = data;
+                        }
+                    })(node));
+                    tmp = '';
+                    len --;
+                }else{
+                    tmp = l1 + tmp;
+                }
+            }else if(!flag && l1 == '}' && l2 == '}'){
+                flag    = true;
+                len --;
+            }
+        }
     }
-}
+};
+
 walk(document.documentElement, function(depth, scopes) {
     if(this.nodeType == 1){
         var attributes  = this.attributes,
@@ -132,11 +337,65 @@ walk(document.documentElement, function(depth, scopes) {
             attribute   = attributes[len];
             for(key in directives){
                 if(new RegExp(key, "gim").test(attribute.nodeName))
-                    directives[key].call(this, attribute.nodeValue, R.$1, R.$2, R.$3, R.$4, R.$5, R.$6, R.$7, R.$8, R.$9);
+                directives[key].call(this, attribute.nodeValue, R.$1, R.$2, R.$3, R.$4, R.$5, R.$6, R.$7, R.$8, R.$9);
             }
         }
+    }else if(this.nodeType == 3){
+        var flag    = false,
+            hasTpl  = flag,
+            node    = this,
+            value   = node.nodeValue,
+            len     = value.length,
+            tmp     = '',
+            tmp2    = '',
+            i       = -1,
+            parent  = node.parentNode,
+            l1,l2,textNode;
+
+        while(++i<len){
+            l1 = value[i];
+            l2 = value[i+1];
+            if(flag){
+                if(l1 == '}' && l2 == '}'){
+                    textNode = node.cloneNode(false);
+                    textNode.nodeValue  = '';
+                    parent.insertBefore(textNode, node);
+                    //subscribte
+                    PubSub.subscribe(tmp, (function(node){
+                        return function(data){
+                            node.nodeValue  = data;
+                        }
+                    })(textNode));
+                    flag    = false;
+                    tmp     = '';
+                    i++;
+                }else{
+                    tmp += l1;
+                } 
+            }else{
+                if(l1 == '{' && l2 == '{'){
+                    textNode = node.cloneNode(false);
+                    textNode.nodeValue  = '';
+                    parent.insertBefore(textNode, node);
+                    flag    = hasTpl    = true;
+                    tmp2    = '';
+                    i++;
+                }else if(l1 != ' '){
+                    tmp2 += l1;
+                }
+            }
+        }
+        if(hasTpl) node.nodeValue  = '';
     }
 });
+
+PubSub.publish('phone.name', 'moto');
+PubSub.publish('phone.snippet', 'snippet');
+PubSub.publish('phone.img', 'img');
+PubSub.publish('phone.name', 'moto2');
+PubSub.publish('item.child', 'child');
+PubSub.publish('phones',[1,2,3,4])
+console.log(PubSub)
 </script>
     <!--
     <div>2</div>
